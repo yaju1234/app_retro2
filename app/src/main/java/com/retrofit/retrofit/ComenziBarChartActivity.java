@@ -27,6 +27,7 @@ import static android.view.View.VISIBLE;
 
 public class ComenziBarChartActivity extends AppCompatActivity {
     public static String url = "http://floridaconstruct.eu/";
+    public static String url2 = "http://floridaconstruct.eu/comenzi/";
     private ProgressBar bar;
     BarChart chart;
     ArrayList<BarEntry> VALORI;
@@ -53,7 +54,7 @@ public class ComenziBarChartActivity extends AppCompatActivity {
         if (orderList!=null&&orderList.size()>0){
             for (int i=0;i<orderList.size();i++){
 
-                VALORI.add(new BarEntry(Float.parseFloat(orderList.get(i).getItem3()), i));
+                VALORI.add(new BarEntry(Float.parseFloat(orderList.get(i).getItem3().replace("lei", "")), i));
                 BarEntryLabels.add(orderList.get(i).getItem4());
             }
             Bardataset = new BarDataSet(VALORI, "Comenzi");
@@ -97,21 +98,50 @@ public class ComenziBarChartActivity extends AppCompatActivity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        if (resultCode == 100) {
-            Intent intent = getIntent();
-            finish();
-            startActivity(intent);
-        }
-        if(requestCode==2)
-        {
-            //  bar.setVisibility(VISIBLE);
-            start=data.getStringExtra("start");
-            end=data.getStringExtra("end");
-            Toast.makeText(ComenziBarChartActivity.this, "Comenzi in perioada"+start+"--"+end, Toast.LENGTH_SHORT).show();
-              MInterface.getComenziGraficPerioada(start,end).enqueue(listener);
+        if(requestCode==2) {
+            if (data != null) {
+                //  bar.setVisibility(VISIBLE);
+                start = data.getStringExtra("start");
+                end = data.getStringExtra("end");
+                Toast.makeText(ComenziBarChartActivity.this, "Comenzi in perioada" + start + "--" + end, Toast.LENGTH_SHORT).show();
+                getSortedList(start, end);
+                // MInterface.getComenziGraficPerioada(start,end).enqueue(listener);
+            }
         }
 
     }
+
+    private void getSortedList(String start, String end) {
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(url2)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+        MInterface restInt=retrofit.create(MInterface.class);
+        restInt.getComenziGraficPerioada(start,end).enqueue(new Callback<ArrayList<Order>>() {
+            @Override
+            public void onResponse(Call<ArrayList<Order>> call, Response<ArrayList<Order>> response) {
+
+                if(response.isSuccessful()) {
+                    VALORI.clear();
+                    BarEntryLabels.clear();
+                    bar.setVisibility(GONE);
+                    ArrayList<Order> orderList = response.body();
+                    AddValuesToBARENTRY(orderList);
+
+                }else {
+                    int statusCode  = response.code();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ArrayList<Order>> call, Throwable t) {
+                bar.setVisibility(GONE);
+                Toast.makeText(ComenziBarChartActivity.this,"No Internet", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+    }
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
